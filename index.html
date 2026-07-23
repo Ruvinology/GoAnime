@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoAnime — Discover Anime</title>
+<style>
+  :root {
+    --bg: #0d0f1a;
+    --card: #171a2b;
+    --card-hover: #1f2340;
+    --accent: #7c5cff;
+    --accent2: #ff5c8a;
+    --text: #e8e9f3;
+    --muted: #9aa0b8;
+    --border: #262b45;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    padding: 24px 5% 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    font-size: 1.9rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: 1px;
+  }
+  .logo span { font-weight: 300; }
+  .search-area {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 12px 5% 24px;
+    align-items: center;
+  }
+  input, select, button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 1rem;
+    outline: none;
+  }
+  input { flex: 1 1 260px; }
+  input:focus, select:focus { border-color: var(--accent); }
+  select { cursor: pointer; }
+  button.primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 12px 28px;
+    transition: transform .15s, opacity .15s;
+  }
+  button.primary:hover { transform: translateY(-2px); opacity: .9; }
+  .section-title {
+    padding: 0 5% 16px;
+    font-size: 1.2rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+    padding: 0 5% 50px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: transform .2s, border-color .2s, background .2s;
+    position: relative;
+  }
+  .card:hover { transform: translateY(-6px); border-color: var(--accent); background: var(--card-hover); }
+  .card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
+  .card .info { padding: 12px; }
+  .card .title {
+    font-size: .95rem;
+    font-weight: 600;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.4em;
+  }
+  .card .meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: .8rem; color: var(--muted); }
+  .badge {
+    position: absolute;
+    top: 10px; left: 10px;
+    background: rgba(13,15,26,.85);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    font-size: .72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .score { color: #ffd166; font-weight: 700; }
+  .status-msg { text-align: center; padding: 60px 5%; color: var(--muted); font-size: 1.05rem; line-height: 1.6; }
+  .spinner {
+    width: 46px; height: 46px;
+    border: 4px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    margin: 70px auto;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(5,6,12,.85);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 4vh 4vw;
+    z-index: 100;
+    overflow-y: auto;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    max-width: 860px;
+    width: 100%;
+    display: flex;
+    overflow: hidden;
+    animation: pop .25s ease;
+  }
+  @keyframes pop { from { transform: scale(.95); opacity: 0; } }
+  .modal .poster { flex: 0 0 300px; }
+  .modal .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .modal .details { padding: 28px; flex: 1; }
+  .modal h2 { font-size: 1.5rem; margin-bottom: 4px; }
+  .modal .jp { color: var(--muted); font-size: .95rem; margin-bottom: 14px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+  .stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: .85rem;
+  }
+  .stat b { color: var(--accent2); }
+  .genres { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .genre-tag {
+    background: linear-gradient(90deg, rgba(124,92,255,.2), rgba(255,92,138,.2));
+    border: 1px solid var(--accent);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: .8rem;
+  }
+  .synopsis { color: var(--muted); line-height: 1.65; font-size: .95rem; max-height: 220px; overflow-y: auto; margin-top: 10px; }
+  .close-btn {
+    position: absolute; top: 18px; right: 22px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .trailer-link {
+    display: inline-block;
+    margin-top: 16px;
+    color: var(--accent2);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .trailer-link:hover { text-decoration: underline; }
+  .retry-btn { margin-top: 18px; cursor: pointer; }
+
+
+  /* Professional footer */
+  footer {
+    margin-top: 20px;
+    padding: 22px 5%;
+    border-top: 1px solid var(--border);
+    background: rgba(23, 26, 43, 0.7);
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  footer .creator-name {
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  footer .brand-name {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 800;
+  }
+  @media (max-width: 640px) {
+    .modal { flex-direction: column; }
+    .modal .poster { flex: none; max-height: 420px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Go<span>Anime</span></div>
+</header>
+
+<div class="search-area">
+  <input id="searchInput" type="text" placeholder="Search anime by name... (e.g. Naruto, One Piece)">
+  <select id="genreSelect">
+    <option value="">All Genres</option>
+    <option value="Action">Action</option>
+    <option value="Adventure">Adventure</option>
+    <option value="Comedy">Comedy</option>
+    <option value="Drama">Drama</option>
+    <option value="Fantasy">Fantasy</option>
+    <option value="Horror">Horror</option>
+    <option value="Mystery">Mystery</option>
+    <option value="Romance">Romance</option>
+    <option value="Sci-Fi">Sci-Fi</option>
+    <option value="Slice of Life">Slice of Life</option>
+    <option value="Sports">Sports</option>
+    <option value="Supernatural">Supernatural</option>
+    <option value="Thriller">Suspense</option>
+  </select>
+  <select id="typeSelect">
+    <option value="">All Types</option>
+    <option value="TV">TV</option>
+    <option value="MOVIE">Movie</option>
+    <option value="OVA">OVA</option>
+    <option value="ONA">ONA</option>
+    <option value="SPECIAL">Special</option>
+  </select>
+  <button class="primary" id="searchBtn">Search</button>
+</div>
+
+<div class="section-title" id="sectionTitle">🔥 Top Anime Right Now</div>
+<div id="results" class="grid"></div>
+<div id="status"></div>
+
+<footer>
+  <p><span class="brand-name">GoAnime</span> — Designed &amp; Developed by <span class="creator-name">Ruvin Palihawadana</span></p>
+  <p>&copy; <span id="currentYear"></span> All rights reserved.</p>
+</footer>
+
+<div class="modal-overlay" id="modalOverlay">
+  <button class="close-btn" id="closeModal">✕</button>
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+  const API = 'https://graphql.anilist.co';
+  const resultsEl = document.getElementById('results');
+  const statusEl = document.getElementById('status');
+  const titleEl = document.getElementById('sectionTitle');
+  const overlay = document.getElementById('modalOverlay');
+  const modalContent = document.getElementById('modalContent');
+  const searchBtn = document.getElementById('searchBtn');
+  document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+  let lastSearch = { q: '', genre: '', format: '' };
+  const cache = new Map();
+
+  const ANIME_QUERY = `
+    query ($page: Int, $perPage: Int, $search: String, $genre: String, $format: MediaFormat) {
+      Page(page: $page, perPage: $perPage) {
+        media(
+          type: ANIME,
+          search: $search,
+          genre: $genre,
+          format: $format,
+          isAdult: false,
+          sort: [SCORE_DESC, POPULARITY_DESC]
+        ) {
+          id
+          idMal
+          title { romaji english native }
+          coverImage { extraLarge large medium }
+          averageScore
+          episodes
+          format
+          status
+          seasonYear
+          startDate { year }
+          description(asHtml: false)
+          genres
+          trailer { id site thumbnail }
+          rankings { rank type allTime context }
+          siteUrl
+        }
+      }
+    }
+  `;
+
+  function showLoading() {
+    resultsEl.innerHTML = '';
+    statusEl.innerHTML = '<div class="spinner"></div>';
+    searchBtn.disabled = true;
+    searchBtn.style.opacity = '.65';
+  }
+
+  function finishLoading() {
+    searchBtn.disabled = false;
+    searchBtn.style.opacity = '';
+  }
+
+  function showMessage(msg, withRetry = false) {
+    resultsEl.innerHTML = '';
+    statusEl.innerHTML = '<div class="status-msg">' + msg +
+      (withRetry ? '<br><button class="primary retry-btn" id="retryBtn">Try Again</button>' : '') +
+      '</div>';
+
+    if (withRetry) {
+      document.getElementById('retryBtn').onclick = () => fetchAnime(lastSearch, true);
+    }
+  }
+
+  function escapeHTML(value = '') {
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function cleanDescription(value) {
+    if (!value) return 'No synopsis available.';
+    const temp = document.createElement('div');
+    temp.innerHTML = String(value).replace(/<br\s*\/?\s*>/gi, '\n');
+    return escapeHTML((temp.textContent || '').trim()).replaceAll('\n', '<br>');
+  }
+
+  function formatLabel(value) {
+    if (!value) return '—';
+    return value
+      .replaceAll('_', ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, letter => letter.toUpperCase());
+  }
+
+  function getTrailerUrl(trailer) {
+    if (!trailer?.id || !trailer?.site) return '';
+    const site = trailer.site.toLowerCase();
+    if (site === 'youtube') return `https://www.youtube.com/watch?v=${encodeURIComponent(trailer.id)}`;
+    if (site === 'dailymotion') return `https://www.dailymotion.com/video/${encodeURIComponent(trailer.id)}`;
+    return '';
+  }
+
+  async function fetchWithTimeout(url, options, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function fetchAnime(criteria = lastSearch, forceRefresh = false) {
+    lastSearch = { ...criteria };
+    const cacheKey = JSON.stringify(lastSearch);
+
+    if (!forceRefresh && cache.has(cacheKey)) {
+      renderResults(cache.get(cacheKey));
+      return;
+    }
+
+    showLoading();
+
+    const variables = {
+      page: 1,
+      perPage: 18,
+      search: criteria.q || null,
+      genre: criteria.genre || null,
+      format: criteria.format || null
+    };
+
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await fetchWithTimeout(API, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ query: ANIME_QUERY, variables })
+        });
+
+        if (response.status === 429 || response.status >= 500) {
+          const retryAfter = Number(response.headers.get('Retry-After')) || attempt * 2;
+          throw new Error(`Anime service returned HTTP ${response.status}. Retry after ${retryAfter} seconds.`);
+        }
+
+        if (!response.ok) {
+          throw new Error(`Anime service returned HTTP ${response.status}`);
+        }
+
+        const json = await response.json();
+        if (json.errors?.length) {
+          throw new Error(json.errors.map(error => error.message).join(' | '));
+        }
+
+        const list = json.data?.Page?.media || [];
+        cache.set(cacheKey, list);
+        renderResults(list);
+        finishLoading();
+        return;
+      } catch (error) {
+        lastError = error;
+        console.error(`GoAnime request attempt ${attempt} failed:`, error);
+
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 2200));
+        }
+      }
+    }
+
+    finishLoading();
+    const message = lastError?.name === 'AbortError'
+      ? 'The anime server took too long to respond.'
+      : escapeHTML(lastError?.message || 'Unknown network error');
+
+    showMessage(
+      'Could not load anime data.<br><br>' +
+      '<b style="color:#ff5c8a">' + message + '</b><br><br>' +
+      'Open this page through a local web server, then try again. In VS Code, use <b>Live Server</b>, or run <b>python -m http.server 5500</b> in the file folder.',
+      true
+    );
+  }
+
+  function renderResults(list) {
+    finishLoading();
+    statusEl.innerHTML = '';
+
+    if (!list.length) {
+      showMessage('No anime found 😢 — try another name or filter.');
+      return;
+    }
+
+    resultsEl.innerHTML = '';
+
+    list.forEach(anime => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const title = anime.title?.english || anime.title?.romaji || 'Unknown title';
+      const image = anime.coverImage?.extraLarge || anime.coverImage?.large || anime.coverImage?.medium || '';
+      const score = anime.averageScore ? (anime.averageScore / 10).toFixed(1) : 'N/A';
+      const year = anime.seasonYear || anime.startDate?.year || '';
+
+      card.innerHTML = `
+        <span class="badge">${escapeHTML(formatLabel(anime.format))}</span>
+        <img src="${escapeHTML(image)}" alt="${escapeHTML(title)} poster" loading="lazy">
+        <div class="info">
+          <div class="title">${escapeHTML(title)}</div>
+          <div class="meta">
+            <span class="score">★ ${score}</span>
+            <span>${escapeHTML(year)}</span>
+          </div>
+        </div>`;
+
+      card.onclick = () => openModal(anime);
+      resultsEl.appendChild(card);
+    });
+  }
+
+  function openModal(anime) {
+    const title = anime.title?.english || anime.title?.romaji || 'Unknown title';
+    const nativeTitle = anime.title?.native || '';
+    const image = anime.coverImage?.extraLarge || anime.coverImage?.large || anime.coverImage?.medium || '';
+    const score = anime.averageScore ? (anime.averageScore / 10).toFixed(1) : 'N/A';
+    const year = anime.seasonYear || anime.startDate?.year || '?';
+    const rank = (anime.rankings || []).find(item => item.type === 'RATED' && item.allTime)?.rank;
+    const genres = (anime.genres || [])
+      .map(genre => `<span class="genre-tag">${escapeHTML(genre)}</span>`)
+      .join('');
+    const trailerUrl = getTrailerUrl(anime.trailer);
+    const trailer = trailerUrl
+      ? `<a class="trailer-link" href="${escapeHTML(trailerUrl)}" target="_blank" rel="noopener">▶ Watch Trailer</a>`
+      : '';
+
+    modalContent.innerHTML = `
+      <div class="poster"><img src="${escapeHTML(image)}" alt="${escapeHTML(title)} poster"></div>
+      <div class="details">
+        <h2>${escapeHTML(title)}</h2>
+        <div class="jp">${escapeHTML(nativeTitle)}</div>
+        <div class="stats">
+          <span class="stat">⭐ <b>${score}</b> / 10</span>
+          <span class="stat">📺 <b>${escapeHTML(formatLabel(anime.format))}</b></span>
+          <span class="stat">🎬 <b>${escapeHTML(anime.episodes ?? '?')}</b> eps</span>
+          <span class="stat">📅 <b>${escapeHTML(year)}</b></span>
+          <span class="stat">📡 <b>${escapeHTML(formatLabel(anime.status))}</b></span>
+          ${rank ? `<span class="stat">🏆 Rank <b>#${rank}</b></span>` : ''}
+        </div>
+        <div class="genres">${genres}</div>
+        <div class="synopsis">${cleanDescription(anime.description)}</div>
+        ${trailer}
+      </div>`;
+
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function doSearch() {
+    const q = document.getElementById('searchInput').value.trim();
+    const genre = document.getElementById('genreSelect').value;
+    const format = document.getElementById('typeSelect').value;
+
+    const parts = [];
+    if (q) parts.push(`"${q}"`);
+    if (genre) parts.push(genre);
+    if (format) parts.push(document.getElementById('typeSelect').selectedOptions[0].text);
+
+    titleEl.textContent = parts.length
+      ? '🔎 Results for ' + parts.join(' · ')
+      : '🔥 Top Anime Right Now';
+
+    fetchAnime({ q, genre, format });
+  }
+
+  document.getElementById('closeModal').onclick = closeModal;
+  overlay.onclick = event => { if (event.target === overlay) closeModal(); };
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
+  searchBtn.onclick = doSearch;
+  document.getElementById('searchInput').addEventListener('keydown', event => {
+    if (event.key === 'Enter') doSearch();
+  });
+  document.getElementById('genreSelect').onchange = doSearch;
+  document.getElementById('typeSelect').onchange = doSearch;
+
+  fetchAnime({ q: '', genre: '', format: '' });
+</script>
+</body>
+</html>
